@@ -1,0 +1,450 @@
+<%- include('../partials/header') %>
+
+<nav class="navbar">
+    <a href="/dashboard" class="logo">QuizArena</a>
+    <div class="nav-links">
+        <div class="profile-dropdown" id="profileDropdown">
+            <button class="profile-btn" id="profileBtn">
+                <div class="avatar"><%= user.username.charAt(0).toUpperCase() %></div>
+                <span class="profile-name"><%= user.username %></span>
+                <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="/profile" class="dropdown-item">
+                    <span class="dropdown-icon">👤</span> My Profile
+                </a>
+                <a href="/dashboard" class="dropdown-item active">
+                    <span class="dropdown-icon">🏠</span> Dashboard
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="/auth/logout" class="dropdown-item dropdown-item-danger">
+                    <span class="dropdown-icon">🚪</span> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="dashboard-container">
+    <div class="dashboard-header animate-fade-in-up">
+        <h1>Welcome to QuizArena</h1>
+        <p>What would you like to do today?</p>
+    </div>
+
+    <div class="action-cards">
+            <div class="action-card join-card animate-fade-in-up" style="animation-delay: 0.1s;">
+                <div class="card-icon">🎮</div>
+                <h2>Join a Quiz</h2>
+                <p>Enter a room code to join an ongoing quiz and compete with others.</p>
+                <form action="/player/join" method="POST" class="inline-form">
+                    <input type="text" name="roomCode" placeholder="Enter Room Code" required class="form-control" maxlength="6">
+                    <button type="submit" class="btn btn-primary">Join Room</button>
+                </form>
+            </div>
+
+            <div class="action-card host-card animate-fade-in-up" style="animation-delay: 0.2s;">
+                <div class="card-icon">👑</div>
+                <h2>Host a Quiz</h2>
+                <p>Create a new quiz room, upload a PDF for AI question generation, and invite players.</p>
+                <a href="/host/create" class="btn btn-primary btn-block" style="margin-top: 1rem;">Create New Room</a>
+            </div>
+
+            <div class="action-card ai-card animate-fade-in-up" style="animation-delay: 0.3s;">
+                <div class="card-icon">🤖</div>
+                <h2>AI Challenge</h2>
+                <p>Compete against our AI! Upload a PDF and see if you can beat the machine in a 1-on-1 battle.</p>
+                <a href="/host/create?type=ai" class="btn btn-secondary btn-block" style="margin-top: 1rem;">Start AI Battle</a>
+            </div>
+
+            <div class="action-card tournament-card animate-fade-in-up coming-soon" style="animation-delay: 0.4s;">
+                <div class="be-ready-tag">BE READY</div>
+                <div class="card-icon">🏆</div>
+                <h2>Tournaments</h2>
+                <p>Host large-scale tournaments with multiple rounds, brackets, and grand prizes.</p>
+                <button class="btn btn-disabled btn-block" style="margin-top: 1rem;" disabled>Coming Soon</button>
+            </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div id="errorModal" class="error-modal" style="display:none;">
+    <div class="error-modal-content">
+        <div class="error-icon">🚫</div>
+        <h2 id="errorTitle">Access Denied</h2>
+        <p id="errorMsg">You cannot join this room right now.</p>
+        <button class="btn btn-primary" onclick="closeError()">Got it</button>
+    </div>
+</div>
+
+<style>
+/* Dashboard Styles */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 2rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    margin: -2rem -2rem 0 -2rem;
+    flex-shrink: 0;
+}
+.logo {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
+    position: relative;
+}
+.profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    padding: 0.4rem 1rem 0.4rem 0.4rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+.profile-btn:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.profile-name {
+    font-weight: 500;
+}
+.dropdown-arrow {
+    transition: transform 0.2s ease;
+    color: var(--text-muted);
+}
+.profile-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    min-width: 200px;
+    padding: 0.5rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+}
+.profile-dropdown.open .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    color: var(--text-main);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background 0.15s ease;
+}
+.dropdown-item:hover {
+    background: rgba(255,255,255,0.06);
+}
+.dropdown-item.active {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--primary-color);
+}
+.dropdown-item-danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+.dropdown-icon {
+    font-size: 1rem;
+}
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0.4rem 0;
+}
+
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 6rem); /* Full height minus nav and padding */
+    overflow: hidden;
+}
+
+.dashboard-header {
+    text-align: center;
+    padding: 2rem 0;
+    flex-shrink: 0;
+}
+.dashboard-header h1 {
+    font-size: 3rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+.dashboard-header p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+.action-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem 1rem 3rem 1rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) transparent;
+}
+
+/* Custom Scrollbar - Hidden until active & hovered */
+.action-cards::-webkit-scrollbar {
+    width: 6px;
+}
+.action-cards::-webkit-scrollbar-track {
+    background: transparent;
+}
+.action-cards::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 10px;
+}
+/* Only show when container is 'active-scroll' (clicked) AND hovered */
+.action-cards.active-scroll:hover::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+}
+.action-cards.active-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary-color);
+}
+@media (max-width: 800px) {
+    .action-cards {
+        grid-template-columns: 1fr; /* Stack on small screens */
+    }
+}
+.action-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    text-align: center;
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+.action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md), 0 0 15px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+.ai-card:hover {
+    box-shadow: var(--shadow-md), 0 0 15px rgba(168, 85, 247, 0.2);
+    border-color: rgba(168, 85, 247, 0.5);
+}
+.btn-secondary {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    color: white;
+    border: none;
+    font-weight: 700;
+}
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+}
+.card-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+}
+.action-card h2 {
+    margin-bottom: 1rem;
+}
+.action-card p {
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    min-height: 50px;
+}
+.inline-form {
+    display: flex;
+    gap: 0.5rem;
+}
+.inline-form input {
+    flex: 1;
+    text-align: center;
+    letter-spacing: 1px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.85rem 0.5rem;
+    font-size: 0.95rem;
+}
+.inline-form input::placeholder {
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+}
+}
+
+/* Coming Soon Card Styles */
+.coming-soon {
+    position: relative;
+    overflow: hidden;
+    filter: grayscale(0.5);
+    opacity: 0.85;
+}
+.be-ready-tag {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 0.4rem 1rem;
+    border-radius: 0 0 0 12px;
+    letter-spacing: 1px;
+    box-shadow: -2px 2px 10px rgba(239, 68, 68, 0.3);
+}
+.coming-soon:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+.btn-disabled {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border: 1px solid var(--border-color);
+}
+.action-card.coming-soon p, .action-card.coming-soon h2 {
+    filter: blur(0.5px);
+}
+.tournament-card:hover {
+    border-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+/* Error Modal Styles */
+.error-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+.error-modal-content {
+    background: var(--bg-card);
+    border: 2px solid #ef4444;
+    border-radius: var(--radius-lg);
+    padding: 3rem;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.2);
+    animation: errorPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.error-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+.error-modal h2 {
+    color: #ef4444;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 900;
+}
+.error-modal p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+@keyframes errorPop {
+    from { opacity: 0; transform: scale(0.8) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+</style>
+
+<script>
+// Profile Dropdown Toggle
+const profileBtn = document.getElementById('profileBtn');
+const profileDropdown = document.getElementById('profileDropdown');
+
+profileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileDropdown.classList.toggle('open');
+});
+
+document.addEventListener('click', () => {
+    profileDropdown.classList.remove('open');
+});
+
+// Check for errors in URL
+const urlParams = new URLSearchParams(window.location.search);
+const errorType = urlParams.get('error');
+
+if (errorType) {
+    const modal = document.getElementById('errorModal');
+    const title = document.getElementById('errorTitle');
+    const msg = document.getElementById('errorMsg');
+    
+    modal.style.display = 'flex';
+    
+    if (errorType === 'already_started') {
+        title.innerText = 'Game In Progress';
+        msg.innerText = 'You cannot join this quiz because it has already started or finished.';
+    } else if (errorType === 'room_not_found') {
+        title.innerText = 'Room Not Found';
+        msg.innerText = 'The room code you entered does not exist. Please check and try again.';
+    }
+}
+
+function closeError() {
+    document.getElementById('errorModal').style.display = 'none';
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+// Scroll activation logic
+const actionCards = document.querySelector('.action-cards');
+document.addEventListener('click', (e) => {
+    if (actionCards.contains(e.target)) {
+        actionCards.classList.add('active-scroll');
+    } else {
+        actionCards.classList.remove('active-scroll');
+    }
+});
+</script>
+
+<%- include('../partials/footer') %>
+

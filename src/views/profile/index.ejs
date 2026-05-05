@@ -1,0 +1,556 @@
+<%- include('../partials/header') %>
+
+<nav class="navbar">
+    <a href="/dashboard" class="logo">QuizArena</a>
+    <div class="nav-links">
+        <div class="profile-dropdown" id="profileDropdown">
+            <button class="profile-btn" id="profileBtn">
+                <div class="avatar"><%= user.username.charAt(0).toUpperCase() %></div>
+                <span class="profile-name"><%= user.username %></span>
+                <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="/profile" class="dropdown-item active">
+                    <span class="dropdown-icon">👤</span> My Profile
+                </a>
+                <a href="/dashboard" class="dropdown-item">
+                    <span class="dropdown-icon">🏠</span> Dashboard
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="/auth/logout" class="dropdown-item dropdown-item-danger">
+                    <span class="dropdown-icon">🚪</span> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="profile-page">
+    <!-- Profile Header -->
+    <div class="profile-header animate-fade-in-up">
+        <div class="profile-avatar-lg"><%= user.username.charAt(0).toUpperCase() %></div>
+        <div class="profile-info">
+            <h1><%= user.username %></h1>
+            <p class="profile-email"><%= userDoc ? userDoc.email : '' %></p>
+            <p class="profile-score">✨ Total Points: <strong><%= stats.totalScore %></strong></p>
+            <p class="profile-joined">Member since <%= userDoc ? new Date(userDoc.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A' %></p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-row animate-fade-in-up" style="animation-delay: 0.1s;">
+        <div class="stat-card">
+            <div class="stat-icon">👑</div>
+            <div class="stat-value"><%= stats.hostedCount %></div>
+            <div class="stat-label">Quizzes Hosted</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🎮</div>
+            <div class="stat-value"><%= stats.playedCount %></div>
+            <div class="stat-label">Quizzes Played</div>
+        </div>
+        <div class="stat-card stat-card-gold">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-value"><%= stats.wonCount %></div>
+            <div class="stat-label">Quizzes Won</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="profile-tabs animate-fade-in-up" style="animation-delay: 0.2s;">
+        <button class="tab-btn active" data-tab="hosted">👑 Hosted (<%= stats.hostedCount %>)</button>
+        <button class="tab-btn" data-tab="played">🎮 Played (<%= stats.playedCount %>)</button>
+        <button class="tab-btn" data-tab="won">🏆 Won (<%= stats.wonCount %>)</button>
+    </div>
+
+    <!-- Hosted Tab -->
+    <div class="tab-content active" id="tab-hosted">
+        <% if (hostedRooms.length === 0) { %>
+            <div class="empty-state animate-fade-in-up">
+                <div class="empty-icon">📭</div>
+                <h3>No quizzes hosted yet</h3>
+                <p>Create your first quiz room and invite players!</p>
+                <a href="/host/create" class="btn btn-primary" style="margin-top:1rem;">Host a Quiz</a>
+            </div>
+        <% } else { %>
+            <div class="quiz-list">
+                <% hostedRooms.forEach((room, i) => { %>
+                    <div class="quiz-item animate-fade-in-up" style="animation-delay: <%= 0.05 * i %>s;">
+                        <div class="quiz-item-left">
+                            <div class="quiz-item-icon">📋</div>
+                            <div>
+                                <h4><%= room.quizId ? room.quizId.title : 'Untitled Quiz' %></h4>
+                                <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
+                                    <span class="difficulty-tag difficulty-<%= (room.quizId && room.quizId.difficulty) ? room.quizId.difficulty : 'medium' %>">
+                                        <%= (room.quizId && room.quizId.difficulty) ? room.quizId.difficulty : 'medium' %>
+                                    </span>
+                                </div>
+                                <span class="quiz-meta">Room: <%= room.roomId %> · <%= room.playerCount %> player<%= room.playerCount !== 1 ? 's' : '' %> · <%= new Date(room.createdAt).toLocaleDateString() %></span>
+                            </div>
+                        </div>
+                        <div class="quiz-item-right">
+                            <span class="badge badge-hosted">Hosted</span>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Played Tab -->
+    <div class="tab-content" id="tab-played">
+        <% if (playedRooms.length === 0) { %>
+            <div class="empty-state animate-fade-in-up">
+                <div class="empty-icon">🎯</div>
+                <h3>No quizzes played yet</h3>
+                <p>Join a room to start competing!</p>
+                <a href="/dashboard" class="btn btn-primary" style="margin-top:1rem;">Join a Quiz</a>
+            </div>
+        <% } else { %>
+            <div class="quiz-list">
+                <% playedRooms.forEach((room, i) => { %>
+                    <div class="quiz-item animate-fade-in-up" style="animation-delay: <%= 0.05 * i %>s;">
+                        <div class="quiz-item-left">
+                            <div class="quiz-item-icon">🎮</div>
+                            <div>
+                                <h4><%= room.quizId ? room.quizId.title : 'Untitled Quiz' %></h4>
+                                <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
+                                    <span class="difficulty-tag difficulty-<%= (room.quizId && room.quizId.difficulty) ? room.quizId.difficulty : 'medium' %>">
+                                        <%= (room.quizId && room.quizId.difficulty) ? room.quizId.difficulty : 'medium' %>
+                                    </span>
+                                </div>
+                                <span class="quiz-meta">Room: <%= room.roomId %> · Score: <%= room.myScore %> · <%= new Date(room.createdAt).toLocaleDateString() %></span>
+                            </div>
+                        </div>
+                        <div class="quiz-item-right">
+                            <span class="badge badge-played">Played</span>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Won Tab -->
+    <div class="tab-content" id="tab-won">
+        <% if (wonRooms.length === 0) { %>
+            <div class="empty-state animate-fade-in-up">
+                <div class="empty-icon">🏆</div>
+                <h3>No wins yet</h3>
+                <p>Keep playing to claim your first victory!</p>
+                <a href="/dashboard" class="btn btn-primary" style="margin-top:1rem;">Play a Quiz</a>
+            </div>
+        <% } else { %>
+            <div class="quiz-list">
+                <% wonRooms.forEach((room, i) => { %>
+                    <div class="quiz-item quiz-item-won animate-fade-in-up" style="animation-delay: <%= 0.05 * i %>s;">
+                        <div class="quiz-item-left">
+                            <div class="quiz-item-icon">🏆</div>
+                            <div>
+                                <h4><%= room.quizId ? room.quizId.title : 'Untitled Quiz' %></h4>
+                                <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
+                                    <span class="difficulty-tag difficulty-<%= (room.quizId && room.quizId.difficulty) ? room.quizId.difficulty : 'medium' %>">
+                                        <%= (room.quizId && room.quizId.difficulty) ? room.quizId.difficulty : 'medium' %>
+                                    </span>
+                                </div>
+                                <span class="quiz-meta">Room: <%= room.roomId %> · <%= new Date(room.createdAt).toLocaleDateString() %></span>
+                            </div>
+                        </div>
+                        <div class="quiz-item-right">
+                            <span class="badge badge-won">🥇 Winner</span>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<style>
+/* Profile Page Styles */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 0;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.logo {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
+    position: relative;
+}
+.profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    padding: 0.4rem 1rem 0.4rem 0.4rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+.profile-btn:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.profile-name {
+    font-weight: 500;
+}
+.dropdown-arrow {
+    transition: transform 0.2s ease;
+    color: var(--text-muted);
+}
+.profile-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    min-width: 200px;
+    padding: 0.5rem;
+    box-shadow: var(--shadow-lg, 0 10px 40px rgba(0,0,0,0.4));
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+}
+.profile-dropdown.open .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-main);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background 0.15s ease;
+}
+.dropdown-item:hover {
+    background: rgba(255,255,255,0.06);
+}
+.dropdown-item.active {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--primary-color);
+}
+.dropdown-item-danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+.dropdown-icon {
+    font-size: 1rem;
+}
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0.4rem 0;
+}
+
+/* Profile Header */
+.profile-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+}
+.profile-avatar-lg {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 2rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.profile-info h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.25rem;
+}
+.profile-email {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+.profile-score {
+    color: var(--primary-color);
+    font-size: 1rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+}
+.profile-joined {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    opacity: 0.7;
+}
+
+/* Stats Row */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.2rem;
+    margin-bottom: 2rem;
+}
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+.stat-card-gold {
+    border-color: rgba(234, 179, 8, 0.3);
+}
+.stat-card-gold:hover {
+    box-shadow: 0 6px 20px rgba(234, 179, 8, 0.15);
+}
+.stat-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    font-family: var(--font-display);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.stat-card-gold .stat-value {
+    background: linear-gradient(135deg, #eab308, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.stat-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+}
+
+/* Tabs */
+.profile-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0;
+}
+.tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.8rem 1.2rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    margin-bottom: -1px;
+}
+.tab-btn:hover {
+    color: var(--text-main);
+}
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+
+/* Quiz List */
+.quiz-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.quiz-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.2rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    transition: all 0.2s ease;
+}
+.quiz-item:hover {
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateX(4px);
+}
+.quiz-item-won {
+    border-color: rgba(234, 179, 8, 0.25);
+}
+.quiz-item-won:hover {
+    border-color: rgba(234, 179, 8, 0.5);
+}
+.quiz-item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+.quiz-item-icon {
+    font-size: 1.5rem;
+}
+.quiz-item-left h4 {
+    margin: 0 0 0.2rem;
+    font-size: 1rem;
+}
+.quiz-meta {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+.badge {
+    padding: 0.25rem 0.65rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.badge-hosted {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+.badge-played {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+}
+.badge-won {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+}
+
+/* Difficulty Tags */
+.difficulty-tag {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.difficulty-easy {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+.difficulty-medium {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+}
+.difficulty-hard {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+.difficulty-expert {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+}
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+.empty-state h3 {
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    .profile-tabs {
+        overflow-x: auto;
+    }
+}
+</style>
+
+<script>
+// Profile Dropdown Toggle
+const profileBtn = document.getElementById('profileBtn');
+const profileDropdown = document.getElementById('profileDropdown');
+
+profileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileDropdown.classList.toggle('open');
+});
+
+document.addEventListener('click', () => {
+    profileDropdown.classList.remove('open');
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+});
+</script>
+
+<%- include('../partials/footer') %>

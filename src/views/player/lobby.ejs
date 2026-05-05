@@ -1,0 +1,66 @@
+<%- include('../partials/header') %>
+
+<div class="lobby-container animate-fade-in-up" style="max-width: 600px;">
+    <div class="lobby-header">
+        <h1>Waiting Room</h1>
+        <p>You have joined room <strong><%= room.roomId %></strong></p>
+    </div>
+
+    <div class="auth-card" style="width: 100%; text-align: center;">
+        <h2 style="margin-bottom: 1rem;"><%= quiz.title %></h2>
+        
+        <div class="spinner" style="margin: 2rem auto;"></div>
+        
+        <h3>Waiting for host to start the game...</h3>
+        <p style="color: var(--text-muted); margin-top: 1rem;">Get ready! The quiz will begin shortly.</p>
+        
+        <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <p>Players in room: <span id="playerCount" style="font-weight: bold; color: var(--primary-color);">1</span></p>
+        </div>
+    </div>
+</div>
+
+<style>
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid rgba(59, 130, 246, 0.2);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    border-bottom-color: var(--secondary-color);
+    animation: spin 1.5s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const roomId = '<%= room.roomId %>';
+    const userId = '<%= user.userId %>';
+    const username = '<%= user.username %>';
+    
+    // Join room as player
+    socket.emit('player_join', { roomId, userId, username });
+
+    socket.on('update_players', (players) => {
+        document.getElementById('playerCount').innerText = players.length;
+    });
+
+    socket.on('room_state', (data) => {
+        // Player state sends a different format but we can check for playerCount or similar
+        // Actually socketHandler sends data.players only to host? 
+        // No, I should check what I did in socketHandler.
+    });
+
+    socket.on('quiz_started', () => {
+        window.location.href = `/player/game/${roomId}`;
+    });
+</script>
+
+<%- include('../partials/footer') %>

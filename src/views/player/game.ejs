@@ -1,0 +1,533 @@
+<%- include('../partials/header') %>
+
+<div class="p-game-wrapper animate-fade-in-up">
+
+    <!-- Score + Timer Bar -->
+    <div class="p-topbar">
+        <span class="p-score" id="scoreDisplay">Score: 0</span>
+        <span class="p-timer" id="timerDisplay">--</span>
+    </div>
+
+    <!-- Waiting to start -->
+    <div class="p-card" id="waitingScreen">
+        <h2 class="waiting-title">Waiting for Host...</h2>
+        <div class="rules-container">
+            <h3 class="rules-title">📜 How to Play</h3>
+            <div class="rules-list">
+                <div class="rule-item">
+                    <div class="rule-icon">✅</div>
+                    <div class="rule-text">
+                        <strong>Accuracy is Key</strong>
+                        <span>Each correct answer gives you a base 500 points.</span>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-icon">⚡</div>
+                    <div class="rule-text">
+                        <strong>Speed Matters</strong>
+                        <span>Earn up to 500 bonus points for answering quickly!</span>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-icon">🔒</div>
+                    <div class="rule-text">
+                        <strong>Lock it In</strong>
+                        <span>Once you pick an option, it's locked. No second chances!</span>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-icon">🏆</div>
+                    <div class="rule-text">
+                        <strong>Live Standings</strong>
+                        <span>The leaderboard updates after every question. Aim for #1!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="waiting-footer">The quiz will begin as soon as the host starts the game.</p>
+    </div>
+
+    <!-- Active question -->
+    <div id="playingScreen" style="display:none;">
+        <h2 id="questionText" class="p-question-text">Question</h2>
+        <div class="p-options-grid" id="optionsGrid">
+            <div class="p-option color-red"    id="opt0" onclick="submitAnswer(0)"></div>
+            <div class="p-option color-blue"   id="opt1" onclick="submitAnswer(1)"></div>
+            <div class="p-option color-yellow" id="opt2" onclick="submitAnswer(2)"></div>
+            <div class="p-option color-green"  id="opt3" onclick="submitAnswer(3)"></div>
+        </div>
+        <!-- Result feedback banner (shown after answering) -->
+        <div id="answerFeedback" class="answer-feedback" style="display:none;"></div>
+    </div>
+
+    <!-- Between-round / end screen -->
+    <div class="p-card" id="resultsScreen" style="display:none;">
+        <h2 id="resultTitle">Result</h2>
+        <p id="resultMsg">Waiting for next question...</p>
+    </div>
+
+</div>
+
+<style>
+.p-game-wrapper {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Topbar */
+.p-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    padding: 0.6rem 1.8rem;
+}
+.p-score { font-size: 1.2rem; font-weight: 700; }
+.p-timer {
+    font-size: 1.8rem; font-weight: 900;
+    color: var(--warning-color);
+    transition: color 0.4s;
+}
+.p-timer.danger { color: #ef4444; animation: timerPulse 0.5s infinite alternate; }
+
+/* Card */
+.p-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem; text-align: center;
+}
+
+/* Question */
+.p-question-text {
+    font-size: 1.7rem; line-height: 1.5;
+    text-align: center; margin-bottom: 1.8rem;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg); padding: 1.5rem 2rem;
+}
+
+/* Options */
+.p-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+}
+.p-option {
+    padding: 2.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 1.2rem; font-weight: 700; color: white;
+    cursor: pointer; text-align: center;
+    transition: transform 0.15s, opacity 0.35s, box-shadow 0.35s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    position: relative; overflow: hidden;
+    user-select: none;
+}
+.p-option:hover  { transform: scale(1.03); }
+.p-option:active { transform: scale(0.96); }
+
+.color-red    { background: linear-gradient(135deg,#e3342f,#c01c18); }
+.color-blue   { background: linear-gradient(135deg,#3490dc,#1a6fb5); }
+.color-yellow { background: linear-gradient(135deg,#f6993f,#d97706); }
+.color-green  { background: linear-gradient(135deg,#38c172,#0e9f50); }
+
+/* After answering states */
+.p-option.correct-ans {
+    background: linear-gradient(135deg,#10b981,#059669) !important;
+    box-shadow: 0 0 0 4px #10b981, 0 0 25px rgba(16,185,129,0.5);
+    transform: scale(1.04);
+    pointer-events: none;
+}
+.p-option.correct-ans::after {
+    content: '✓';
+    position: absolute; top: .5rem; right: .8rem;
+    font-size: 1.4rem; opacity: 0.9;
+}
+.p-option.wrong-ans {
+    background: linear-gradient(135deg,#ef4444,#dc2626) !important;
+    box-shadow: 0 0 0 4px #ef4444, 0 0 20px rgba(239,68,68,0.4);
+    pointer-events: none;
+    animation: shake 0.4s ease;
+}
+.p-option.wrong-ans::after {
+    content: '✗';
+    position: absolute; top: .5rem; right: .8rem;
+    font-size: 1.4rem; opacity: 0.9;
+}
+.p-option.dimmed {
+    opacity: 0.18;
+    pointer-events: none;
+    transform: scale(0.97);
+}
+
+/* Answer feedback banner */
+.answer-feedback {
+    margin-top: 1.5rem;
+    padding: 1.2rem 2rem;
+    border-radius: var(--radius-lg);
+    font-size: 1.6rem; font-weight: 900;
+    text-align: center; letter-spacing: 1px;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.feedback-correct {
+    background: rgba(16,185,129,0.12);
+    border: 2px solid #10b981;
+    color: #10b981;
+}
+.feedback-wrong {
+    background: rgba(239,68,68,0.12);
+    border: 2px solid #ef4444;
+    color: #ef4444;
+}
+.feedback-timeout {
+    background: rgba(245,158,11,0.1);
+    border: 2px solid var(--warning-color);
+    color: var(--warning-color);
+}
+
+.waiting-note {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    animation: fadeInUp 0.4s ease both;
+}
+
+/* Cheer Toast */
+.cheer-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    z-index: 9999;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    color: white;
+    font-size: 2rem;
+    font-weight: 900;
+    padding: 1.2rem 3rem;
+    border-radius: 100px;
+    box-shadow: 0 20px 60px rgba(124,58,237,0.5);
+    pointer-events: none;
+    white-space: nowrap;
+    animation: cheerPop 1.8s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    letter-spacing: 1px;
+}
+@keyframes cheerPop {
+    0%   { opacity:0; transform: translate(-50%,-50%) scale(0.3); }
+    20%  { opacity:1; transform: translate(-50%,-50%) scale(1.1); }
+    40%  { transform: translate(-50%,-50%) scale(1); }
+    70%  { opacity:1; transform: translate(-50%,-60%) scale(1); }
+    100% { opacity:0; transform: translate(-50%,-80%) scale(0.8); }
+}
+
+/* Keyframes */
+@keyframes popIn {
+    from { opacity:0; transform:scale(0.7); }
+    to   { opacity:1; transform:scale(1); }
+}
+@keyframes shake {
+    0%,100% { transform:translateX(0); }
+    20%      { transform:translateX(-8px); }
+    40%      { transform:translateX(8px); }
+    60%      { transform:translateX(-5px); }
+    80%      { transform:translateX(5px); }
+}
+@keyframes timerPulse {
+    from { transform:scale(1); }
+    to   { transform:scale(1.1); }
+}
+@keyframes fadeInUp {
+    from { opacity:0; transform:translateY(10px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+
+/* Waiting Screen Rules */
+.waiting-title {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: var(--primary-color);
+}
+.rules-container {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: left;
+}
+.rules-title {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: var(--text-main);
+}
+.rules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+.rule-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.rule-icon {
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+.rule-text {
+    display: flex;
+    flex-direction: column;
+}
+.rule-text strong {
+    font-size: 1rem;
+    color: var(--text-main);
+}
+.rule-text span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.waiting-footer {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.9rem;
+    animation: pulse 1.5s infinite alternate;
+}
+
+@media(max-width:600px) {
+    .p-options-grid { grid-template-columns:1fr; }
+    .p-question-text { font-size:1.3rem; }
+}
+</style>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket    = io();
+    const roomId    = '<%= room.roomId %>';
+    const userId    = '<%= user.userId %>';
+    const username  = '<%= user.username %>';
+
+    let currentQuestionIndex = -1;
+    let hasAnswered      = false;
+    let mySelectedOption = -1;
+    let questionStartTime = 0;
+    let myScore = 0;
+
+    const colors = ['red','blue','yellow','green'];
+
+    socket.emit('player_join', { roomId, userId, username });
+
+    socket.on('room_state', (data) => {
+        if (data.phase === 'waiting') return;
+        
+        currentQuestionIndex = data.currentQuestion;
+        myScore = data.playerScore || 0;
+        scoreDisplay.innerText = `Score: ${myScore}`;
+        
+        if (data.phase === 'question') {
+            waitingScreen.style.display = 'none';
+            resultsScreen.style.display = 'none';
+            playingScreen.style.display = 'block';
+            
+            questionText.innerText = `Q${data.currentQuestion + 1}. ${data.quizData.questionText}`;
+            resetOptions();
+            for (let i = 0; i < 4; i++) {
+                document.getElementById('opt'+i).innerText = data.quizData.options[i];
+            }
+            
+            timerDisplay.innerText = data.timeLeft;
+            
+            if (data.hasAnswered) {
+                hasAnswered = true;
+                mySelectedOption = data.selectedOption;
+                // Re-apply selection visuals
+                for (let i = 0; i < 4; i++) {
+                    if (i !== mySelectedOption) {
+                        document.getElementById('opt'+i).style.opacity = '0.45';
+                    }
+                }
+                document.getElementById('opt'+mySelectedOption).style.boxShadow = '0 0 0 5px white, 0 0 20px rgba(255,255,255,0.3)';
+            }
+        } else if (data.phase === 'results') {
+            playingScreen.style.display = 'none';
+            waitingScreen.style.display = 'none';
+            resultsScreen.style.display = 'block';
+        }
+    });
+
+    const waitingScreen  = document.getElementById('waitingScreen');
+    const playingScreen  = document.getElementById('playingScreen');
+    const resultsScreen  = document.getElementById('resultsScreen');
+    const resultTitle    = document.getElementById('resultTitle');
+    const resultMsg      = document.getElementById('resultMsg');
+    const scoreDisplay   = document.getElementById('scoreDisplay');
+    const timerDisplay   = document.getElementById('timerDisplay');
+    const questionText   = document.getElementById('questionText');
+    const answerFeedback = document.getElementById('answerFeedback');
+
+    function resetOptions() {
+        for (let i = 0; i < 4; i++) {
+            const el = document.getElementById('opt'+i);
+            // Reset class completely
+            el.className = `p-option color-${colors[i]}`;
+            // Clear ALL inline styles — this is the critical step
+            el.removeAttribute('style');
+        }
+    }
+
+    /* ── New Question ── */
+    socket.on('new_question', (data) => {
+        currentQuestionIndex = data.questionIndex;
+        hasAnswered      = false;
+        mySelectedOption = -1;
+        questionStartTime = Date.now();
+
+        waitingScreen.style.display  = 'none';
+        resultsScreen.style.display  = 'none';
+        playingScreen.style.display  = 'block';
+        answerFeedback.style.display = 'none';
+        answerFeedback.className     = 'answer-feedback';
+        timerDisplay.classList.remove('danger');
+
+        // Remove old waiting note
+        const old = document.getElementById('waitingNote');
+        if (old) old.remove();
+
+        questionText.innerText = `Q${data.questionIndex + 1}. ${data.questionText}`;
+
+        resetOptions();
+
+        for (let i = 0; i < 4; i++) {
+            document.getElementById('opt'+i).innerText = data.options[i];
+        }
+    });
+
+    /* ── Timer ── */
+    socket.on('timer_update', (time) => {
+        timerDisplay.innerText = time;
+        timerDisplay.classList.toggle('danger', time <= 5);
+    });
+
+    /* ── Question End — reveal correct/wrong ── */
+    socket.on('question_end', (data) => {
+        const me = data.leaderboard.find(p => p.userId === userId);
+        if (me) { myScore = me.score; scoreDisplay.innerText = `Score: ${myScore}`; }
+
+        // Apply result classes (CSS handles pointer-events:none internally)
+        for (let i = 0; i < 4; i++) {
+            const el = document.getElementById('opt'+i);
+            if (i === data.correctAnswer) {
+                el.className = `p-option color-${colors[i]} correct-ans`;
+            } else if (i === mySelectedOption) {
+                el.className = `p-option color-${colors[i]} wrong-ans`;
+            } else {
+                el.className = `p-option color-${colors[i]} dimmed`;
+            }
+        }
+
+        // Show feedback banner
+        answerFeedback.style.display = 'block';
+        if (!hasAnswered) {
+            answerFeedback.className = 'answer-feedback feedback-timeout';
+            answerFeedback.innerHTML = "⏰ Time's Up! The correct answer is highlighted.";
+        } else if (mySelectedOption === data.correctAnswer) {
+            answerFeedback.className = 'answer-feedback feedback-correct';
+            answerFeedback.innerHTML = '✅ Correct! Well done!';
+        } else {
+            answerFeedback.className = 'answer-feedback feedback-wrong';
+            answerFeedback.innerHTML = '❌ Wrong Answer!';
+        }
+    });
+
+    /* ── Quiz Finished ── */
+    socket.on('quiz_finished', (data) => {
+        playingScreen.style.display  = 'none';
+        waitingScreen.style.display  = 'none';
+        resultsScreen.style.display  = 'block';
+
+        const meIndex = data.leaderboard.findIndex(p => p.userId === userId);
+        const rank    = meIndex + 1;
+        const medal   = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+        resultTitle.innerText = 'Quiz Finished! 🎉';
+        resultTitle.style.color = 'var(--success-color)';
+        resultMsg.innerHTML = `
+            <div style="font-size:3rem;margin-bottom:.5rem">${medal}</div>
+            <div style="font-size:1.6rem;font-weight:800">You finished <strong>${rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : 'place ' + rank}</strong>!</div>
+            <div style="font-size:1.2rem;color:var(--text-muted);margin:0.5rem 0 1.5rem">Final Score: <strong style="color:var(--primary-color)">${myScore} pts</strong></div>
+            <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+        `;
+    });
+
+    /* ── Cheer Messages ── */
+    const cheerMessages = [
+        { text: '⚡ That was quick!',    color: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+        { text: '🔥 On fire!',           color: 'linear-gradient(135deg,#ef4444,#dc2626)' },
+        { text: '🚀 Speed demon!',       color: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' },
+        { text: '🎯 Nice pick!',         color: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' },
+        { text: '💪 Go for it!',         color: 'linear-gradient(135deg,#10b981,#059669)' },
+        { text: '🌟 Confident choice!',  color: 'linear-gradient(135deg,#ec4899,#db2777)' },
+        { text: '😎 Cool & calm!',       color: 'linear-gradient(135deg,#06b6d4,#0891b2)' },
+        { text: '🏆 Champion energy!',   color: 'linear-gradient(135deg,#fbbf24,#f59e0b)' },
+        { text: '👀 Eyes on the prize!', color: 'linear-gradient(135deg,#6366f1,#4f46e5)' },
+        { text: '✨ Locked in!',         color: 'linear-gradient(135deg,#a855f7,#9333ea)' },
+    ];
+
+    function showCheer(timeTaken) {
+        const pool = timeTaken <= 3 ? [0,1,2] : timeTaken <= 8 ? [3,4,6,7] : [5,8,9];
+        const pick = cheerMessages[pool[Math.floor(Math.random() * pool.length)]];
+        const toast = document.createElement('div');
+        toast.className = 'cheer-toast';
+        toast.textContent = pick.text;
+        toast.style.background = pick.color;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 1900);
+    }
+
+    /* ── Submit Answer ── */
+    window.submitAnswer = (optionIndex) => {
+        if (hasAnswered) return;
+        hasAnswered = true;
+        mySelectedOption = optionIndex;
+
+        const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+
+        // Visual: white ring on chosen, others slightly dimmed — using inline style ONLY here
+        for (let i = 0; i < 4; i++) {
+            if (i !== optionIndex) {
+                document.getElementById('opt'+i).style.opacity = '0.45';
+            }
+        }
+        document.getElementById('opt'+optionIndex).style.boxShadow = '0 0 0 5px white, 0 0 20px rgba(255,255,255,0.3)';
+
+        // Show cheer animation
+        showCheer(timeTaken);
+
+        // Waiting note
+        const note = document.createElement('p');
+        note.className = 'waiting-note';
+        note.id = 'waitingNote';
+        note.innerText = '🔒 Answer locked! Results shown when time ends...';
+        playingScreen.appendChild(note);
+
+        socket.emit('submit_answer', {
+            roomId, userId,
+            questionIndex: currentQuestionIndex,
+            selectedOption: optionIndex,
+            timeTaken
+        });
+    };
+
+</script>
+
+<%- include('../partials/footer') %>

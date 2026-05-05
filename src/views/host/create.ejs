@@ -1,0 +1,90 @@
+<%- include('../partials/header') %>
+
+<nav class="navbar">
+    <div class="logo">QuizArena</div>
+    <div class="nav-links">
+        <a href="/dashboard" class="btn btn-logout">Back to Dashboard</a>
+    </div>
+</nav>
+
+<div class="dashboard-container" style="max-width: 600px; margin: 0 auto;">
+    <div class="auth-card animate-fade-in-up" style="width: 100%;">
+        <h1 class="auth-title">Create Quiz Room</h1>
+        <p class="auth-subtitle">Upload a PDF to automatically generate questions</p>
+        
+        <% if (error) { %>
+            <div class="alert alert-error"><%= error %></div>
+        <% } %>
+
+        <!-- Important: enctype="multipart/form-data" is required for file uploads -->
+        <form action="/host/create" method="POST" enctype="multipart/form-data" class="auth-form" id="createForm">
+            <% if ((typeof query !== 'undefined' && query && query.type === 'ai') || (typeof isAIChallenge !== 'undefined' && isAIChallenge)) { %>
+                <input type="hidden" name="isAIChallenge" value="true">
+            <% } %>
+            <div class="form-group">
+                <label for="title">Quiz Title</label>
+                <input type="text" id="title" name="title" required placeholder="e.g., Node.js Basics" class="form-control" value="<%= ((typeof query !== 'undefined' && query && query.type === 'ai') || (typeof isAIChallenge !== 'undefined' && isAIChallenge)) ? 'AI Battle: ' : '' %>">
+            </div>
+
+            <div class="form-group">
+                <label for="pdfFile">Upload PDF Material</label>
+                <input type="file" id="pdfFile" name="pdfFile" accept="application/pdf" required class="form-control" style="padding: 0.6rem;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="numQuestions">Number of Questions</label>
+                    <input type="number" id="numQuestions" name="numQuestions" min="1" max="100" value="5" required class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="timeLimit">Time per Question (sec)</label>
+                    <input type="number" id="timeLimit" name="timeLimit" min="5" max="300" value="20" required class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="difficulty">Difficulty Level</label>
+                <select id="difficulty" name="difficulty" class="form-control" required>
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                    <option value="expert">Expert</option>
+                </select>
+                <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">The AI will read the PDF and generate questions based on these settings.</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Generate Quiz & Create Room</button>
+        </form>
+
+        <div id="loadingIndicator" style="display: none; text-align: center; margin-top: 2rem;">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem; color: var(--primary-color);">Reading PDF and generating questions with AI... Please wait.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(59, 130, 246, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+document.getElementById('createForm').addEventListener('submit', function() {
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('loadingIndicator').style.display = 'block';
+});
+</script>
+
+<%- include('../partials/footer') %>
