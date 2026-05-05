@@ -10,6 +10,7 @@ dotenv.config();
 const fs = require('fs');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
