@@ -18,79 +18,81 @@ const aiGenerator = async (text, numQuestions = 5, difficulty = 'medium', timeLi
         console.warn('Ollama failed (is it running?), falling back to Gemini...', ollamaError.message);
     }
 
-    const maxRetries = 3;
+    const maxRetries = 2;
     let attempt = 0;
 
     while (attempt <= maxRetries) {
         try {
             if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-                throw new Error("GEMINI_API_KEY is missing in .env file.");
+                throw new Error("GEMINI_API_KEY is missing.");
             }
 
-            const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-            
-            const systemPrompt = `You are a quiz generator. Generate exactly ${numQuestions} questions from the text.
-Return ONLY a JSON array of objects. 
-Keys: "questionText", "options" (array of 4), "correctAnswer" (0-3), "timeLimit".`;
-
-            const prompt = `Generate a quiz based on this text:\n\n${text}`;
-
-            const fallbacks = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-2.0-flash-lite'];
+            const client = new GoogleGenAI(process.env.GEMINI_API_KEY);
+            const fallbacks = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b'];
             const modelName = fallbacks[attempt] || fallbacks[0];
+            const model = client.getGenerativeModel({ model: modelName });
 
-            const result = await client.models.generateContent({
-                model: modelName,
-                systemInstruction: systemPrompt,
+            const systemPrompt = `You are a quiz generator. Generate exactly ${numQuestions} multiple choice questions from the text.
+Return ONLY a valid JSON array of objects. 
+Each object MUST have:
+- "questionText": string
+- "options": array of exactly 4 strings
+- "correctAnswer": number (0-3)
+- "timeLimit": number (${timeLimit})`;
+
+            const prompt = `Text to process:\n\n${text}`;
+
+            const result = await model.generateContent({
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                config: {
-                    responseMimeType: "application/json"
-                }
+                generationConfig: {
+                    responseMimeType: "application/json",
+                },
+                systemInstruction: systemPrompt
             });
 
-            let responseText = result.text.trim();
+            const response = await result.response;
+            let responseText = response.text().trim();
             
             console.log(`--- AI RAW RESPONSE (${modelName}) START ---`);
-            console.log(responseText);
+            // console.log(responseText); // Logged for debugging
             console.log('--- AI RAW RESPONSE END ---');
 
-            // Clean text if markdown crept in despite responseMimeType
-            responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+            // Robust JSON extraction
+            const jsonMatch = responseText.match(/\[\s*\{.*\}\s*\]/s);
+            if (jsonMatch) {
+                responseText = jsonMatch[0];
+            } else {
+                responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+            }
             
             let data = JSON.parse(responseText);
-            
-            // Handle if AI returns { "questions": [...] } or similar
             let rawQuestions = Array.isArray(data) ? data : (data.questions || data.quiz || data.items || []);
             
-            if (rawQuestions.length === 0) {
-                throw new Error("AI returned an empty question list.");
-            }
+            if (rawQuestions.length === 0) throw new Error("Empty questions list");
 
             return processQuestions(rawQuestions, numQuestions, timeLimit);
 
         } catch (error) {
+            console.error(`Gemini attempt ${attempt} failed:`, error.message);
             attempt++;
             
-            const isRetryable = error.status === 503 || error.status === 429 || 
-                               (error.message && (error.message.includes('503') || error.message.includes('429')));
-
-            if (isRetryable && attempt <= maxRetries) {
+            if (attempt <= maxRetries) {
                 const waitTime = Math.pow(2, attempt) * 1000; 
-                console.warn(`Gemini attempt ${attempt} failed. Retrying...`);
                 await sleep(waitTime);
                 continue;
             }
 
-            // GEMINI FAILED - TRY DEEPSEEK FALLBACK
-            console.log('Gemini failed or quota hit. Attempting DeepSeek fallback...');
+            // GEMINI FAILED - TRY OTHER PROVIDERS
             try {
+                console.log('Gemini failed. Attempting DeepSeek fallback...');
                 return await deepseekGenerator(text, numQuestions, difficulty, timeLimit);
             } catch (dsError) {
-                console.warn('DeepSeek fallback failed, trying OpenAI...');
                 try {
+                    console.log('DeepSeek failed. Attempting OpenAI fallback...');
                     return await openaiGenerator(text, numQuestions, difficulty, timeLimit);
                 } catch (oaError) {
-                    console.error('All AI providers failed:', oaError);
-                    throw oaError;
+                    console.warn('All AI APIs failed. Using Emergency Local Generator.');
+                    return generateLocalQuestions(text, numQuestions, timeLimit);
                 }
             }
         }

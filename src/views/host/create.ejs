@@ -31,13 +31,13 @@
                 <input type="file" id="pdfFile" name="pdfFile" accept="application/pdf" required class="form-control" style="padding: 0.6rem;">
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div class="form-group">
+            <div class="form-row" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group" style="flex: 1;">
                     <label for="numQuestions">Number of Questions</label>
                     <input type="number" id="numQuestions" name="numQuestions" min="1" max="100" value="5" required class="form-control">
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" style="flex: 1;">
                     <label for="timeLimit">Time per Question (sec)</label>
                     <input type="number" id="timeLimit" name="timeLimit" min="5" max="300" value="20" required class="form-control">
                 </div>

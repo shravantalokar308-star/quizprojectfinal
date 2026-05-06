@@ -52,20 +52,7 @@ app.get('/', (req, res) => {
     res.redirect('/auth/login');
 });
 
-console.log('Starting server initialization...');
-
 const PORT = process.env.PORT || 3000;
-console.log(`Checking environment: PORT=${PORT}, MONGODB_URI=${process.env.MONGODB_URI ? 'Defined' : 'UNDEFINED'}`);
-
 server.listen(PORT, () => {
-    console.log(`Server is successfully running on port ${PORT}`);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception thrown:', err);
-    process.exit(1);
+    console.log(`Server running on port ${PORT}`);
 });

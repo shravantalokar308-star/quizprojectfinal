@@ -200,13 +200,12 @@
 .dashboard-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 6rem); /* Full height minus nav and padding */
-    overflow: hidden;
+    min-height: calc(100vh - 6rem);
 }
 
 .dashboard-header {
     text-align: center;
-    padding: 2rem 0;
+    padding: 2rem 1rem;
     flex-shrink: 0;
 }
 .dashboard-header h1 {
@@ -228,32 +227,33 @@
     max-width: 900px;
     margin: 0 auto;
     padding: 1rem 1rem 3rem 1rem;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--primary-color) transparent;
 }
 
-/* Custom Scrollbar - Hidden until active & hovered */
-.action-cards::-webkit-scrollbar {
-    width: 6px;
+/* Custom Scrollbar - Only for desktop if needed */
+@media (min-width: 769px) {
+    .action-cards {
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary-color) transparent;
+    }
+    .action-cards::-webkit-scrollbar {
+        width: 6px;
+    }
+    .action-cards::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .action-cards::-webkit-scrollbar-thumb {
+        background-color: transparent;
+        border-radius: 10px;
+    }
+    .action-cards.active-scroll:hover::-webkit-scrollbar-thumb {
+        background-color: var(--border-color);
+    }
 }
-.action-cards::-webkit-scrollbar-track {
-    background: transparent;
-}
-.action-cards::-webkit-scrollbar-thumb {
-    background-color: transparent;
-    border-radius: 10px;
-}
-/* Only show when container is 'active-scroll' (clicked) AND hovered */
-.action-cards.active-scroll:hover::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-}
-.action-cards.active-scroll::-webkit-scrollbar-thumb:hover {
-    background-color: var(--primary-color);
-}
+
 @media (max-width: 800px) {
     .action-cards {
-        grid-template-columns: 1fr; /* Stack on small screens */
+        grid-template-columns: 1fr;
     }
 }
 .action-card {
