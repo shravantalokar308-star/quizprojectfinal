@@ -58,14 +58,17 @@ exports.createRoom = async (req, res) => {
 
         res.redirect(`/host/lobby/${roomId}`);
     } catch (err) {
-        console.error(err);
+        console.error('Room Creation Error:', err);
         let errorMessage = 'An error occurred while creating the quiz room.';
         
         // Handle Gemini Quota Error
         if (err.status === 429 || (err.message && err.message.includes('429'))) {
-            errorMessage = 'AI Limit Reached: The daily free quota for Gemini AI has been exceeded (20 quizzes/day). Please wait 24 hours or try a different API key.';
+            errorMessage = 'AI Limit Reached: The daily free quota for Gemini AI has been exceeded. Please wait or try again later.';
         } else if (err.status === 503 || (err.message && err.message.includes('503'))) {
-            errorMessage = 'AI Service Busy: The AI model is currently experiencing high demand. We tried retrying, but it still failed. Please try again in a few minutes.';
+            errorMessage = 'AI Service Busy: The AI model is currently overloaded. Please try again in a few minutes.';
+        } else {
+            // Include actual error snippet for better debugging
+            errorMessage = `Generation Error: ${err.message.substring(0, 100)}`;
         }
 
         res.render('host/create', { 

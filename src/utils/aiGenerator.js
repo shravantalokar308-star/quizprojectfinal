@@ -49,7 +49,11 @@ const aiGenerator = async (text, numQuestions = 5, difficulty = 'medium', timeLi
 
             const systemPrompt = getSystemPrompt(numQuestions, difficulty, timeLimit);
 
-            const prompt = `Text to process:\n\n${text}`;
+            // Trim text to a reasonable length to avoid payload/token issues while keeping enough context
+            const trimmedText = text.substring(0, 15000);
+            console.log(`[AI Generator] Attempt ${attempt} with ${modelName}. Text length: ${trimmedText.length} chars.`);
+
+            const prompt = `Text to process:\n\n${trimmedText}`;
 
             const result = await model.generateContent({
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
