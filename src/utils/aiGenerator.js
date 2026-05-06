@@ -10,61 +10,75 @@ const ollama = new OpenAI({
 });
 
 const getSystemPrompt = (numQuestions, difficulty, timeLimit) => {
-    return `You are a professional quiz generator. Generate exactly ${numQuestions} unique, clear, and high-quality multiple choice questions from the provided text.
+    return `You are an expert Examination Paper Setter. Your task is to generate exactly ${numQuestions} high-quality, formal multiple choice questions (MCQs) based STRICTLY and ONLY on the provided text.
+
 Difficulty Level: ${difficulty.toUpperCase()}
 
-Guidelines:
-1. CLARITY: Questions must be unambiguous and easy to understand.
-2. DIFFICULTY: Ensure questions strictly match the ${difficulty} difficulty level. 
-   - Easy: Direct facts from text.
-   - Medium: Requires some inference or connection of facts.
-   - Hard: Deep understanding and application of concepts.
-3. UNIQUENESS: Avoid duplicate questions or redundant options.
-4. VARIETY: Cover different parts of the text.
-5. FORMAT: Return ONLY a valid JSON array of objects.
+QUESTION TYPES TO INCLUDE (Mix them up):
+- Conceptual Questions ("What is...", "How does...")
+- Situational/Temporal ("When should...", "In which case...")
+- Logical/Analytical ("Why is...", "Which of the following is TRUE/FALSE...")
+- Identification ("Identify the correct...", "Which is NOT...", "Select the wrong one...")
 
-Each object MUST have:
-- "questionText": string
-- "options": array of exactly 4 strings
-- "correctAnswer": number (0-3)
-- "timeLimit": number (${timeLimit})`;
+STRICT RULES:
+1. SOURCE GROUNDING: Every question and ALL 4 options must be derived directly from the information present in the text. Do NOT use outside knowledge.
+2. EXAM QUALITY: Questions must follow a professional exam style—formal tone, clear phrasing, and unambiguous answers.
+3. OPTION INTEGRITY: 
+   - All 4 options must be plausible within the context of the text.
+   - There must be exactly one correct answer.
+   - Distractors (wrong options) should be related to the text content but clearly incorrect based on the specific question.
+4. DIFFICULTY ADHERENCE:
+   - EASY: Direct recall of facts mentioned in the text.
+   - MEDIUM: Requires connecting two or more facts or basic inference from the text.
+   - HARD/EXPERT: Requires deep conceptual understanding, synthesis of information, or complex reasoning based ONLY on the text.
+5. NO REDUNDANCY: Ensure questions are unique and do not overlap in content.
+6. FORMAT: Return ONLY a valid JSON array of objects.
+
+JSON Structure:
+{
+  "questionText": "string",
+  "options": ["option1", "option2", "option3", "option4"],
+  "correctAnswer": 0-3,
+  "timeLimit": ${timeLimit}
+}`;
 };
 
-const aiGenerator = async (text, numQuestions = 5, difficulty = 'medium', timeLimit = 20) => {
+const aiGenerator = async (text, numQuestions = 5, difficulty = 'medium', timeLimit = 20, userApiKey = null) => {
     const maxRetries = 2;
     let attempt = 0;
 
     // Try Gemini first as requested
     while (attempt <= maxRetries) {
         try {
-            if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-                throw new Error("GEMINI_API_KEY is missing.");
+            const apiKeyToUse = userApiKey || process.env.GEMINI_API_KEY;
+            
+            if (!apiKeyToUse || apiKeyToUse === 'your_gemini_api_key_here') {
+                throw new Error("GEMINI_API_KEY is missing. Please provide a valid API key.");
             }
 
-            const client = new GoogleGenAI(process.env.GEMINI_API_KEY);
-            // Primary model is now gemini-2.5-flash as requested
+            const ai = new GoogleGenAI({ apiKey: apiKeyToUse });
+            const systemPrompt = getSystemPrompt(numQuestions, difficulty, timeLimit);
+            
+            // Ensure we use widely supported model names
             const fallbacks = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
             const modelName = fallbacks[attempt] || fallbacks[0];
-            const model = client.getGenerativeModel({ model: modelName });
 
-            const systemPrompt = getSystemPrompt(numQuestions, difficulty, timeLimit);
-
-            // Trim text to a reasonable length to avoid payload/token issues while keeping enough context
+            // Trim text to a reasonable length
             const trimmedText = text.substring(0, 15000);
-            console.log(`[AI Generator] Attempt ${attempt} with ${modelName}. Text length: ${trimmedText.length} chars.`);
+            console.log(`[AI Generator] Attempt ${attempt} with ${modelName}. Using User Key: ${!!userApiKey}. Text length: ${trimmedText.length} chars.`);
 
             const prompt = `Text to process:\n\n${trimmedText}`;
 
-            const result = await model.generateContent({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
+            const result = await ai.models.generateContent({
+                model: modelName,
+                contents: prompt,
+                config: {
                     responseMimeType: "application/json",
-                },
-                systemInstruction: systemPrompt
+                    systemInstruction: systemPrompt
+                }
             });
 
-            const response = await result.response;
-            let responseText = response.text().trim();
+            let responseText = result.text.trim();
             
             console.log(`--- AI RAW RESPONSE (${modelName}) START ---`);
             // console.log(responseText); // Logged for debugging
@@ -180,43 +194,62 @@ const processQuestions = (rawQuestions, numQuestions, timeLimit) => {
 
 /**
  * Emergency Fallback: Generates simple questions from the text without using an API.
- * This ensures the user can ALWAYS create a room even if the AI is down or quota is hit.
+ * Improved to look like formal exam questions without "Incorrect Option" labels.
  */
 const generateLocalQuestions = (text, numQuestions, timeLimit) => {
-    const sentences = text.split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 20);
+    const sentences = text.split(/[.!?]/)
+        .map(s => s.trim())
+        .filter(s => s.length > 40 && s.length < 200);
+    
     const questions = [];
+    const usedSentences = new Set();
 
-    for (let i = 0; i < Math.min(numQuestions, sentences.length); i++) {
+    for (let i = 0; i < sentences.length && questions.length < numQuestions; i++) {
         const sentence = sentences[i];
-        const words = sentence.split(' ');
-        if (words.length < 5) continue;
+        if (usedSentences.has(sentence)) continue;
 
-        // Create a simple "Fill in the blank" style question
-        const missingWordIndex = Math.floor(words.length / 2);
-        const missingWord = words[missingWordIndex].replace(/[,.;]/g, '');
-        words[missingWordIndex] = "_______";
+        const words = sentence.split(/\s+/);
+        if (words.length < 8) continue;
+
+        // Find a good noun or keyword to hide (longer words are usually better)
+        const candidates = words.filter(w => w.length > 5 && !w.includes('"'));
+        if (candidates.length === 0) continue;
         
-        const questionText = `Complete the sentence: "${words.join(' ')}"`;
-        const options = [
-            missingWord,
-            "Incorrect Option A",
-            "Incorrect Option B",
-            "Incorrect Option C"
-        ].sort(() => Math.random() - 0.5);
+        const answer = candidates[Math.floor(Math.random() * candidates.length)].replace(/[,.;:()]/g, '');
+        const questionText = sentence.replace(answer, "_______");
+        
+        // Generate distractors from other sentences
+        const distractors = sentences
+            .filter(s => s !== sentence)
+            .map(s => s.split(/\s+/).filter(w => w.length > 5 && w !== answer))
+            .flat()
+            .slice(0, 50)
+            .sort(() => Math.random() - 0.5)
+            .filter((v, i, a) => a.indexOf(v) === i) // Unique
+            .slice(0, 3);
+
+        // Fill in defaults if not enough distractors found
+        while (distractors.length < 3) {
+            distractors.push(["Concept", "Process", "System", "Data", "Analysis"][distractors.length]);
+        }
+
+        const options = [answer, ...distractors].sort(() => Math.random() - 0.5);
 
         questions.push({
-            questionText,
+            questionText: `Based on the text, fill in the blank: "${questionText}"`,
             options,
-            correctAnswer: options.indexOf(missingWord),
+            correctAnswer: options.indexOf(answer),
             timeLimit: timeLimit
         });
+        
+        usedSentences.add(sentence);
     }
 
-    // Fill remaining if not enough sentences
+    // Last resort filler
     while (questions.length < numQuestions) {
         questions.push({
-            questionText: `Offline Question ${questions.length + 1}: What is the main topic of this document?`,
-            options: ["Option A", "Option B", "Option C", "Option D"],
+            questionText: "Which of the following best describes the main concept discussed in the document?",
+            options: ["The primary subject matter", "A secondary detail", "An unrelated topic", "None of the above"],
             correctAnswer: 0,
             timeLimit: timeLimit
         });
@@ -226,20 +259,25 @@ const generateLocalQuestions = (text, numQuestions, timeLimit) => {
 };
 
 const ollamaGenerator = async (text, numQuestions, difficulty, timeLimit) => {
-    const response = await ollama.chat.completions.create({
-        model: "llama3", // Defaulting to llama3, user can change if needed
-        messages: [
-            { role: "system", content: getSystemPrompt(numQuestions, difficulty, timeLimit) },
-            { role: "user", content: `Text to process:\n\n${text}` }
-        ],
-        response_format: { type: "json_object" }
-    });
+    try {
+        const response = await ollama.chat.completions.create({
+            model: "llama3",
+            messages: [
+                { role: "system", content: getSystemPrompt(numQuestions, difficulty, timeLimit) },
+                { role: "user", content: `Text to process:\n\n${text}` }
+            ],
+            response_format: { type: "json_object" }
+        });
 
-    let content = response.choices[0].message.content;
-    let data = JSON.parse(content);
-    let rawQuestions = Array.isArray(data) ? data : (data.questions || data.quiz || data.items || []);
+        let content = response.choices[0].message.content;
+        let data = JSON.parse(content);
+        let rawQuestions = Array.isArray(data) ? data : (data.questions || data.quiz || data.items || []);
 
-    return processQuestions(rawQuestions, numQuestions, timeLimit);
+        return processQuestions(rawQuestions, numQuestions, timeLimit);
+    } catch (err) {
+        console.error('Ollama Error:', err.message);
+        throw err;
+    }
 };
 
 module.exports = aiGenerator;

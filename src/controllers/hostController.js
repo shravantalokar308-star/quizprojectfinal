@@ -1,5 +1,6 @@
 const Quiz = require('../models/Quiz');
 const Room = require('../models/Room');
+const User = require('../models/User');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const aiGenerator = require('../utils/aiGenerator');
@@ -20,6 +21,31 @@ exports.createRoom = async (req, res) => {
             return res.render('host/create', { error: 'Please upload a PDF file.' });
         }
 
+        // Check Quota and API Key
+        const user = await User.findById(req.user.userId);
+        let userApiKey = user.geminiApiKey;
+        
+        if (!userApiKey) {
+            const today = new Date().setHours(0, 0, 0, 0);
+            const lastQuiz = user.lastQuizDate ? new Date(user.lastQuizDate).setHours(0, 0, 0, 0) : 0;
+            
+            if (lastQuiz === today) {
+                if (user.dailyQuizCount >= 5) {
+                    fs.unlinkSync(req.file.path); // Clean up
+                    return res.render('host/create', { 
+                        error: 'Daily Limit Reached: You can only generate 5 quizzes per day using our free AI. Please add your own Gemini API Key in Settings to generate unlimited quizzes.', 
+                        query: req.query || {},
+                        isAIChallenge: req.body.isAIChallenge === 'true'
+                    });
+                }
+                user.dailyQuizCount += 1;
+            } else {
+                user.dailyQuizCount = 1;
+                user.lastQuizDate = new Date();
+            }
+            await user.save();
+        }
+
         // 1. Parse PDF
         const dataBuffer = fs.readFileSync(req.file.path);
         const data = await pdfParse(dataBuffer);
@@ -29,7 +55,7 @@ exports.createRoom = async (req, res) => {
         fs.unlinkSync(req.file.path);
 
         // 2. Generate MCQs using AI
-        const questions = await aiGenerator(extractedText, parseInt(numQuestions), difficulty, parseInt(timeLimit));
+        const questions = await aiGenerator(extractedText, parseInt(numQuestions), difficulty, parseInt(timeLimit), userApiKey);
 
         if (!questions || questions.length === 0) {
             return res.render('host/create', { error: 'Failed to generate questions from the provided PDF.' });
@@ -112,5 +138,30 @@ exports.gameView = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.redirect('/dashboard');
+    }
+};
+
+exports.settingsView = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+        res.render('host/settings', { user, error: null, success: null });
+    } catch (err) {
+        res.redirect('/dashboard');
+    }
+};
+
+exports.updateSettings = async (req, res) => {
+    try {
+        const { geminiApiKey } = req.body;
+        const user = await User.findById(req.user.userId);
+        
+        user.geminiApiKey = geminiApiKey && geminiApiKey.trim() !== '' ? geminiApiKey.trim() : null;
+        await user.save();
+        
+        res.render('host/settings', { user, error: null, success: 'Settings updated successfully!' });
+    } catch (err) {
+        console.error('Settings Update Error:', err);
+        const user = await User.findById(req.user.userId);
+        res.render('host/settings', { user, error: 'Failed to update settings.', success: null });
     }
 };

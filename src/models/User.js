@@ -26,6 +26,18 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         default: 'user'
+    },
+    geminiApiKey: {
+        type: String,
+        default: null
+    },
+    dailyQuizCount: {
+        type: Number,
+        default: 0
+    },
+    lastQuizDate: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true });
 

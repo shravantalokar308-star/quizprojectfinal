@@ -12,4 +12,8 @@ router.post('/create', upload.single('pdfFile'), hostController.createRoom);
 router.get('/lobby/:roomId', hostController.lobbyView);
 router.get('/game/:roomId', hostController.gameView);
 
+// Settings for BYOK (Bring Your Own Key)
+router.get('/settings', hostController.settingsView);
+router.post('/settings', hostController.updateSettings);
+
 module.exports = router;

@@ -1,0 +1,43 @@
+<%- include('../partials/header') %>
+
+<nav class="navbar">
+    <div class="logo">QuizArena</div>
+    <div class="nav-links">
+        <a href="/dashboard" class="btn btn-logout">Back to Dashboard</a>
+    </div>
+</nav>
+
+<div class="dashboard-container" style="max-width: 600px; margin: 0 auto; padding-top: 2rem;">
+    <div class="auth-card animate-fade-in-up" style="width: 100%;">
+        <h1 class="auth-title">Settings</h1>
+        <p class="auth-subtitle">Manage your account preferences</p>
+        
+        <% if (error) { %>
+            <div class="alert alert-error"><%= error %></div>
+        <% } %>
+        
+        <% if (success) { %>
+            <div class="alert alert-success" style="background-color: var(--success-color); color: white; border-color: rgba(255,255,255,0.2);"><%= success %></div>
+        <% } %>
+
+        <div style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--primary-color); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 2rem;">
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem;">Unlimited Quizzes (BYOK)</h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                Free users are limited to <strong>5 quizzes per day</strong>. Want to generate unlimited quizzes? You can use your own free Google Gemini API Key.
+            </p>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size: 0.9rem; font-weight: bold; text-decoration: underline;">Click here to get your free API key from Google</a>
+        </div>
+
+        <form action="/host/settings" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="geminiApiKey">Your Gemini API Key (Optional)</label>
+                <input type="password" id="geminiApiKey" name="geminiApiKey" placeholder="AIzaSy..." class="form-control" value="<%= user.geminiApiKey || '' %>">
+                <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">Your key is securely stored and only used when you generate a quiz. Leave blank to use the shared server quota.</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Save Settings</button>
+        </form>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>
