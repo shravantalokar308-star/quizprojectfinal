@@ -45,7 +45,11 @@ const roomSchema = new mongoose.Schema({
     isAIChallenge: {
         type: Boolean,
         default: false
-    }
+    },
+    disqualifiedPlayers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Room', roomSchema);

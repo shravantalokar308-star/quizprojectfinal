@@ -66,6 +66,17 @@
         <p id="resultMsg">Waiting for next question...</p>
     </div>
 
+    <!-- Disqualified screen -->
+    <div class="p-card" id="disqualifiedScreen" style="display:none; border-color: #ef4444;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">🚫</div>
+        <h2 style="color: #ef4444; font-size: 2rem; margin-bottom: 1rem;">Disqualified!</h2>
+        <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2rem;">
+            You have been removed from the quiz because you switched tabs or minimized the window. 
+            Cheating is not allowed in QuizArena!
+        </p>
+        <a href="/dashboard" class="btn btn-primary">Back to Dashboard</a>
+    </div>
+
 </div>
 
 <style>
@@ -527,6 +538,50 @@
             timeTaken
         });
     };
+
+    /* ── Anti-Cheat: Tab Switch Detection ── */
+    let isDisqualified = false;
+    const disqualifiedScreen = document.getElementById('disqualifiedScreen');
+
+    function handleCheat() {
+        if (isDisqualified) return;
+        
+        // Only disqualify if the game has actually started (waitingScreen is hidden)
+        if (waitingScreen.style.display === 'none' && resultsScreen.style.display === 'none') {
+            isDisqualified = true;
+            socket.emit('player_cheated', { roomId, userId });
+            showDisqualifiedUI();
+        }
+    }
+
+    function showDisqualifiedUI() {
+        playingScreen.style.display = 'none';
+        waitingScreen.style.display = 'none';
+        resultsScreen.style.display = 'none';
+        disqualifiedScreen.style.display = 'block';
+        // Stop any timers or score updates
+        timerDisplay.innerText = '🚫';
+        timerDisplay.classList.add('danger');
+    }
+
+    // Listen for tab switch or window blur
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) handleCheat();
+    });
+
+    window.addEventListener('blur', handleCheat);
+
+    socket.on('player_disqualified', (data) => {
+        isDisqualified = true;
+        showDisqualifiedUI();
+    });
+
+    socket.on('join_error', (data) => {
+        if (data.message.includes('disqualified')) {
+            isDisqualified = true;
+            showDisqualifiedUI();
+        }
+    });
 
 </script>
 

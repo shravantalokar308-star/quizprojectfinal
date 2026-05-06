@@ -66,9 +66,17 @@ module.exports = (io) => {
             console.log(`Host joined room: ${roomId}`);
         });
 
-        socket.on('player_join', ({ roomId, userId, username }) => {
+        socket.on('player_join', async ({ roomId, userId, username }) => {
             if (activeGames[roomId]) {
                 const game = activeGames[roomId];
+                
+                // Check if player is disqualified
+                const roomDoc = await Room.findOne({ roomId });
+                if (roomDoc && roomDoc.disqualifiedPlayers && roomDoc.disqualifiedPlayers.includes(userId)) {
+                    socket.emit('join_error', { message: 'You have been disqualified from this quiz for switching tabs.' });
+                    return;
+                }
+
                 let player = game.players.find(p => p.userId === userId);
                 
                 // If game is not waiting AND player is not already in the room (reconnecting)
@@ -105,6 +113,25 @@ module.exports = (io) => {
                 io.to(roomId).emit('update_players', game.players);
             }
             console.log(`Player ${username} joined room: ${roomId}`);
+        });
+
+        socket.on('player_cheated', async ({ roomId, userId }) => {
+            const game = activeGames[roomId];
+            if (game) {
+                // Remove from active list
+                game.players = game.players.filter(p => p.userId !== userId);
+                
+                // Add to disqualified list in DB
+                await Room.updateOne({ roomId }, { $addToSet: { disqualifiedPlayers: userId } });
+                
+                // Notify the player
+                socket.emit('player_disqualified', { message: 'You have been disqualified for switching tabs/windows.' });
+                
+                // Notify others (update leaderboard/player count)
+                io.to(roomId).emit('update_players', game.players);
+                
+                console.log(`Player ${userId} disqualified from room ${roomId}`);
+            }
         });
 
         socket.on('start_quiz', async ({ roomId }) => {
