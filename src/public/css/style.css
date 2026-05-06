@@ -381,3 +381,64 @@ select.form-control option {
         padding: 0.75rem;
     }
 }
+/* ====== Footer ====== */
+.footer {
+    margin-top: auto;
+    padding: 3rem 0 2rem 0;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
+}
+
+.footer-content p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.developer-credit {
+    font-weight: 500;
+}
+
+.developer-credit span {
+    color: var(--primary-color);
+    font-weight: 700;
+    font-family: var(--font-display);
+    position: relative;
+    display: inline-block;
+}
+
+.developer-credit span::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--gradient-primary);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform var(--transition-normal);
+}
+
+.developer-credit:hover span::after {
+    transform: scaleX(1);
+    transform-origin: left;
+}
+
+@media (max-width: 768px) {
+    .footer {
+        padding: 2rem 0;
+    }
+    
+    .footer-content p {
+        font-size: 0.8rem;
+    }
+}

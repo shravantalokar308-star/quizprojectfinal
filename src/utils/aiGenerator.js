@@ -9,18 +9,32 @@ const ollama = new OpenAI({
     apiKey: 'ollama', // Ollama doesn't need a real key but the SDK requires one
 });
 
-const aiGenerator = async (text, numQuestions = 5, difficulty = 'medium', timeLimit = 20) => {
-    // Try Ollama first as it has no token limits and is local
-    try {
-        console.log('Attempting question generation with Ollama...');
-        return await ollamaGenerator(text, numQuestions, difficulty, timeLimit);
-    } catch (ollamaError) {
-        console.warn('Ollama failed (is it running?), falling back to Gemini...', ollamaError.message);
-    }
+const getSystemPrompt = (numQuestions, difficulty, timeLimit) => {
+    return `You are a professional quiz generator. Generate exactly ${numQuestions} unique, clear, and high-quality multiple choice questions from the provided text.
+Difficulty Level: ${difficulty.toUpperCase()}
 
+Guidelines:
+1. CLARITY: Questions must be unambiguous and easy to understand.
+2. DIFFICULTY: Ensure questions strictly match the ${difficulty} difficulty level. 
+   - Easy: Direct facts from text.
+   - Medium: Requires some inference or connection of facts.
+   - Hard: Deep understanding and application of concepts.
+3. UNIQUENESS: Avoid duplicate questions or redundant options.
+4. VARIETY: Cover different parts of the text.
+5. FORMAT: Return ONLY a valid JSON array of objects.
+
+Each object MUST have:
+- "questionText": string
+- "options": array of exactly 4 strings
+- "correctAnswer": number (0-3)
+- "timeLimit": number (${timeLimit})`;
+};
+
+const aiGenerator = async (text, numQuestions = 5, difficulty = 'medium', timeLimit = 20) => {
     const maxRetries = 2;
     let attempt = 0;
 
+    // Try Gemini first as requested
     while (attempt <= maxRetries) {
         try {
             if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
@@ -28,17 +42,12 @@ const aiGenerator = async (text, numQuestions = 5, difficulty = 'medium', timeLi
             }
 
             const client = new GoogleGenAI(process.env.GEMINI_API_KEY);
-            const fallbacks = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b'];
+            // Primary model is now gemini-2.5-flash as requested
+            const fallbacks = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
             const modelName = fallbacks[attempt] || fallbacks[0];
             const model = client.getGenerativeModel({ model: modelName });
 
-            const systemPrompt = `You are a quiz generator. Generate exactly ${numQuestions} multiple choice questions from the text.
-Return ONLY a valid JSON array of objects. 
-Each object MUST have:
-- "questionText": string
-- "options": array of exactly 4 strings
-- "correctAnswer": number (0-3)
-- "timeLimit": number (${timeLimit})`;
+            const systemPrompt = getSystemPrompt(numQuestions, difficulty, timeLimit);
 
             const prompt = `Text to process:\n\n${text}`;
 
@@ -84,15 +93,20 @@ Each object MUST have:
 
             // GEMINI FAILED - TRY OTHER PROVIDERS
             try {
-                console.log('Gemini failed. Attempting DeepSeek fallback...');
-                return await deepseekGenerator(text, numQuestions, difficulty, timeLimit);
-            } catch (dsError) {
+                console.log('Gemini failed. Attempting Ollama fallback...');
+                return await ollamaGenerator(text, numQuestions, difficulty, timeLimit);
+            } catch (ollamaError) {
                 try {
-                    console.log('DeepSeek failed. Attempting OpenAI fallback...');
-                    return await openaiGenerator(text, numQuestions, difficulty, timeLimit);
-                } catch (oaError) {
-                    console.warn('All AI APIs failed. Using Emergency Local Generator.');
-                    return generateLocalQuestions(text, numQuestions, timeLimit);
+                    console.log('Ollama failed. Attempting DeepSeek fallback...');
+                    return await deepseekGenerator(text, numQuestions, difficulty, timeLimit);
+                } catch (dsError) {
+                    try {
+                        console.log('DeepSeek failed. Attempting OpenAI fallback...');
+                        return await openaiGenerator(text, numQuestions, difficulty, timeLimit);
+                    } catch (oaError) {
+                        console.warn('All AI APIs failed. Using Emergency Local Generator.');
+                        return generateLocalQuestions(text, numQuestions, timeLimit);
+                    }
                 }
             }
         }
@@ -109,19 +123,12 @@ const deepseekGenerator = async (text, numQuestions, difficulty, timeLimit) => {
         baseURL: 'https://api.deepseek.com'
     });
 
-    const prompt = `You are a quiz generator. Generate exactly ${numQuestions} multiple choice questions from this text:
-    
-    ${text}
-
-    Return ONLY a valid JSON array. Each object MUST have:
-    - "questionText": string
-    - "options": array of 4 strings
-    - "correctAnswer": number (0-3)
-    - "timeLimit": number (${timeLimit})`;
-
     const response = await deepseek.chat.completions.create({
         model: "deepseek-chat",
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+            { role: "system", content: getSystemPrompt(numQuestions, difficulty, timeLimit) },
+            { role: "user", content: `Text to process:\n\n${text}` }
+        ],
         response_format: { type: "json_object" }
     });
 
@@ -139,19 +146,12 @@ const openaiGenerator = async (text, numQuestions, difficulty, timeLimit) => {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const prompt = `You are a quiz generator. Generate exactly ${numQuestions} multiple choice questions from this text:
-    
-    ${text}
-
-    Return ONLY a valid JSON array. Each object MUST have:
-    - "questionText": string
-    - "options": array of 4 strings
-    - "correctAnswer": number (0-3)
-    - "timeLimit": number (${timeLimit})`;
-
     const response = await openai.chat.completions.create({
         model: "gpt-4o-mini", // Cost-effective and fast
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+            { role: "system", content: getSystemPrompt(numQuestions, difficulty, timeLimit) },
+            { role: "user", content: `Text to process:\n\n${text}` }
+        ],
         response_format: { type: "json_object" }
     });
 
@@ -222,19 +222,12 @@ const generateLocalQuestions = (text, numQuestions, timeLimit) => {
 };
 
 const ollamaGenerator = async (text, numQuestions, difficulty, timeLimit) => {
-    const prompt = `You are a quiz generator. Generate exactly ${numQuestions} multiple choice questions from this text:
-    
-    ${text}
-
-    Return ONLY a valid JSON array. Each object MUST have:
-    - "questionText": string
-    - "options": array of 4 strings
-    - "correctAnswer": number (0-3)
-    - "timeLimit": number (${timeLimit})`;
-
     const response = await ollama.chat.completions.create({
         model: "llama3", // Defaulting to llama3, user can change if needed
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+            { role: "system", content: getSystemPrompt(numQuestions, difficulty, timeLimit) },
+            { role: "user", content: `Text to process:\n\n${text}` }
+        ],
         response_format: { type: "json_object" }
     });
 
