@@ -429,6 +429,10 @@ if (errorType) {
     } else if (errorType === 'room_not_found') {
         title.innerText = 'Room Not Found';
         msg.innerText = 'The room code you entered does not exist. Please check and try again.';
+    } else if (errorType === 'disqualified') {
+        title.innerText = 'Disqualified!';
+        title.style.color = 'red';
+        msg.innerHTML = '<span style="color: red; font-size: 1.2rem; font-weight: bold;">you were disqualified!!!</span>';
     }
 }
 

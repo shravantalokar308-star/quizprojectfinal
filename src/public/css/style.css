@@ -288,28 +288,30 @@ select.form-control option {
     }
 
     .app-container {
-        padding: 1rem;
+        padding: 1rem 0.8rem;
     }
 
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.5rem; }
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.3rem; }
+    p { font-size: 0.95rem; }
     
     .auth-card {
-        padding: 2rem 1.5rem;
+        padding: 1.8rem 1.2rem;
+        border-radius: var(--radius-lg);
     }
 
     .auth-title {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
     }
 
     /* Navbar Responsive */
     .navbar {
-        padding: 1rem !important;
-        margin: -1rem -1rem 0 -1rem !important;
+        padding: 1rem 1.2rem !important;
+        margin: -1rem -0.8rem 0 -0.8rem !important;
     }
 
     .logo {
-        font-size: 1.2rem;
+        font-size: 1.3rem;
     }
 
     .profile-name {
@@ -328,6 +330,7 @@ select.form-control option {
     /* Grid Layouts */
     .grid-2 {
         grid-template-columns: 1fr !important;
+        gap: 1rem;
     }
     
     .form-row {
@@ -338,26 +341,54 @@ select.form-control option {
     /* Dashboard Action Cards */
     .action-cards {
         grid-template-columns: 1fr !important;
-        padding: 1rem 0 3rem 0 !important;
-        gap: 1rem !important;
+        padding: 1rem 0 2rem 0 !important;
+        gap: 1.2rem !important;
     }
 
     .action-card {
-        padding: 1.5rem !important;
+        padding: 1.5rem 1.2rem !important;
     }
 
     .card-icon {
-        font-size: 2.5rem !important;
+        font-size: 2.2rem !important;
         margin-bottom: 1rem !important;
     }
 
+    .dashboard-header {
+        padding: 1.5rem 1rem !important;
+    }
+
     .dashboard-header h1 {
-        font-size: 2.2rem !important;
+        font-size: 2rem !important;
+    }
+
+    .dashboard-header p {
+        font-size: 1rem !important;
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 0.8rem 1.2rem;
+        font-size: 0.95rem;
+        width: 100%; /* Make buttons full width on mobile for easier tapping */
+        text-align: center;
+    }
+
+    .btn-google {
+        font-size: 0.95rem;
+        padding: 0.8rem 1.2rem;
     }
 
     /* Inline forms (like Join Room) */
     .inline-form {
         flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .inline-form input {
+        width: 100%;
+        padding: 0.8rem;
+        font-size: 1rem;
     }
 
     .inline-form button {
@@ -368,19 +399,28 @@ select.form-control option {
 /* Very small devices */
 @media (max-width: 480px) {
     .auth-title {
-        font-size: 1.6rem;
+        font-size: 1.4rem;
+    }
+    
+    .app-container {
+        padding: 0.8rem 0.5rem;
+    }
+
+    .auth-card {
+        padding: 1.5rem 1rem;
     }
 
     .btn {
-        padding: 0.75rem 1rem;
+        padding: 0.8rem 1rem;
         font-size: 0.9rem;
     }
 
     .form-control {
-        font-size: 0.9rem;
-        padding: 0.75rem;
+        font-size: 0.95rem;
+        padding: 0.8rem;
     }
 }
+
 /* ====== Footer ====== */
 .footer {
     margin-top: auto;
@@ -435,10 +475,14 @@ select.form-control option {
 
 @media (max-width: 768px) {
     .footer {
-        padding: 2rem 0;
+        padding: 1.5rem 0;
+    }
+    
+    .footer-content {
+        gap: 0.3rem;
     }
     
     .footer-content p {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
     }
 }

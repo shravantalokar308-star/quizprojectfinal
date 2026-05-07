@@ -316,9 +316,21 @@
     animation: pulse 1.5s infinite alternate;
 }
 
-@media(max-width:600px) {
-    .p-options-grid { grid-template-columns:1fr; }
-    .p-question-text { font-size:1.3rem; }
+@media(max-width:768px) {
+    .p-options-grid { grid-template-columns:1fr; gap: 0.8rem; }
+    .p-question-text { font-size:1.3rem; padding: 1rem 1.2rem; margin-bottom: 1.2rem; }
+    .p-option { padding: 1.2rem 1rem; font-size: 1.1rem; }
+    .cheer-toast { font-size: 1.2rem; padding: 0.8rem 1.5rem; }
+    .answer-feedback { font-size: 1.2rem; padding: 1rem; margin-top: 1rem; }
+    
+    .player-topbar { padding: 0.6rem 1rem; flex-wrap: wrap; gap: 0.5rem; justify-content: center; text-align: center; }
+    .timer { font-size: 2rem; width: 100%; order: -1; } /* Timer on top */
+    .p-score { font-size: 1rem; }
+    
+    .waiting-title { font-size: 1.6rem; }
+    .rules-container { padding: 1rem; }
+    .rule-item { flex-direction: column; text-align: center; gap: 0.5rem; }
+    .rule-text strong { font-size: 0.95rem; }
 }
 </style>
 
@@ -425,7 +437,8 @@
     });
 
     /* ── Timer ── */
-    socket.on('timer_update', (time) => {
+    socket.on('timer_tick', (data) => {
+        const time = data.timeLeft;
         timerDisplay.innerText = time;
         timerDisplay.classList.toggle('danger', time <= 5);
     });
@@ -562,6 +575,8 @@
         // Stop any timers or score updates
         timerDisplay.innerText = '🚫';
         timerDisplay.classList.add('danger');
+
+        window.location.href = '/dashboard?error=disqualified';
     }
 
     // Listen for tab switch or window blur

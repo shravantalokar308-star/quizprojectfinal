@@ -118,8 +118,12 @@ module.exports = (io) => {
         socket.on('player_cheated', async ({ roomId, userId }) => {
             const game = activeGames[roomId];
             if (game) {
-                // Remove from active list
-                game.players = game.players.filter(p => p.userId !== userId);
+                // Find the player and mark as disqualified instead of removing
+                const player = game.players.find(p => p.userId === userId);
+                if (player) {
+                    player.isDisqualified = true;
+                    player.score = -999999;
+                }
                 
                 // Add to disqualified list in DB
                 await Room.updateOne({ roomId }, { $addToSet: { disqualifiedPlayers: userId } });
@@ -195,7 +199,8 @@ module.exports = (io) => {
                 }
 
                 // If everyone has answered, end question early (Normal mode only)
-                const allAnswered = game.players.every(p => p.answers[game.currentQuestion]);
+                const activePlayers = game.players.filter(p => !p.isDisqualified);
+                const allAnswered = activePlayers.every(p => p.answers[game.currentQuestion]);
                 if (allAnswered && game.phase === 'question') {
                     clearInterval(game.timer);
                     game.timer = null;
@@ -363,7 +368,8 @@ module.exports = (io) => {
             if (game.isAIChallenge) return;
 
             // Check if everyone has answered (Normal mode only)
-            const allAnswered = game.players.every(p => p.answers[game.currentQuestion]);
+            const activePlayers = game.players.filter(p => !p.isDisqualified);
+            const allAnswered = activePlayers.every(p => p.answers[game.currentQuestion]);
             if (allAnswered && game.phase === 'question') {
                 clearInterval(game.timer);
                 game.timer = null;

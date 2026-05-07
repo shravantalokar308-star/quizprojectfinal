@@ -587,6 +587,105 @@
     from { transform: scale(1); filter: brightness(1); }
     to { transform: scale(1.1); filter: brightness(1.3); }
 }
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .host-wrapper {
+        padding: 0.5rem;
+        height: auto;
+        min-height: calc(100vh - 1.6rem);
+    }
+    .host-topbar {
+        padding: 0.6rem 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .room-badge { width: 100%; text-align: center; }
+    .timer { font-size: 2rem; }
+    
+    .q-card {
+        padding: 1.2rem;
+        gap: 1rem;
+    }
+    .q-heading {
+        font-size: 1.4rem;
+        padding: 1rem;
+    }
+    .opts-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+    .opt-card {
+        padding: 1.2rem 1rem;
+        font-size: 1.1rem;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    .opt-count {
+        font-size: 0.9rem;
+        padding: 0.2rem 0.8rem;
+    }
+    
+    .start-phase {
+        padding: 2rem 1rem;
+        margin: 2rem auto;
+    }
+    .start-btn-small {
+        min-width: 100%;
+    }
+
+    .results-phase {
+        gap: 1rem;
+    }
+    .chart-card, .lb-card {
+        padding: 1rem;
+    }
+    .chart-card.large-graph {
+        min-height: 300px;
+    }
+    .bar-chart.vertical {
+        gap: 0.5rem;
+    }
+    .bar-track-vertical {
+        width: 40px;
+    }
+    .bar-letter {
+        font-size: 1.1rem;
+    }
+    
+    .podium-title {
+        font-size: 1.6rem;
+    }
+    .podium-stage {
+        transform: scale(0.8);
+        transform-origin: bottom center;
+        margin-bottom: 0.5rem;
+    }
+    .rest-item {
+        padding: 0.6rem 1rem;
+    }
+    
+    .battle-modal-content {
+        padding: 2rem 1.5rem;
+    }
+    .battle-title {
+        font-size: 2.2rem;
+        letter-spacing: 2px;
+    }
+    .battle-scores {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .vs-label {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    .score-val {
+        font-size: 2.5rem;
+    }
+}
 </style>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -652,7 +751,7 @@
                 document.getElementById('opt'+i).className    = `opt-card ${colors[i]}`;
                 document.getElementById('bar'+i).style.height = '0%';
                 document.getElementById('barCount'+i).innerText = '—';
-                document.getElementById('barOptText'+i).innerText = currentOptions[i];
+                document.getElementById('barOptText'+i).innerText = '';
             }
             timerDisplay.innerText = data.timeLeft;
         } else if (data.phase === 'results') {
@@ -717,7 +816,7 @@
             document.getElementById('bar'+i).classList.remove('correct-bar');
             document.getElementById('barCol'+i).classList.remove('correct-col');
             document.getElementById('barCount'+i).innerText = '—';
-            document.getElementById('barOptText'+i).innerText = data.options[i];
+            document.getElementById('barOptText'+i).innerText = '';
         }
     });
 
@@ -803,7 +902,7 @@
 
                 // Show correct badge on opt text
                 if (i === correctAnswer) {
-                    optTxt.innerHTML = `${currentOptions[i]}<span class="correct-badge">✓ Correct</span>`;
+                    optTxt.innerHTML = `<span class="correct-badge">✓ Correct</span>`;
                 }
             }, i * 150); // Slightly more staggered for vertical
 
@@ -832,19 +931,21 @@
 
             const isYou = (player.userId === userId);
             const isAI = player.isAI;
+            const isDisqualified = player.isDisqualified;
             const oldScore = prevScores[player.userId] || 0;
             const diff = player.score - oldScore;
 
             li.innerHTML = `
-                <div class="lb-rank">${index < 3 ? medals[index] : '#' + (index + 1)}</div>
-                <div class="lb-info">
-                    <div class="lb-name">
+                <div class="lb-rank">${isDisqualified ? '🚫' : (index < 3 ? medals[index] : '#' + (index + 1))}</div>
+                <div class="lb-info" style="flex:1; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="lb-name" ${isDisqualified ? 'style="color: #ef4444; text-decoration: line-through;"' : ''}>
                         ${isAI ? '🤖 ' : ''}${player.username} 
-                        ${isYou ? '<span class="you-tag">YOU</span>' : ''}
+                        ${isYou ? '<span class="you-tag" style="background:#3b82f6;color:white;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:5px;">YOU</span>' : ''}
+                        ${isDisqualified ? '<span style="font-size: 0.8rem; color: #ef4444; margin-left: 5px;">(Disqualified)</span>' : ''}
                     </div>
-                    <div class="lb-score-row">
-                        <span class="lb-score">${player.score} pts</span>
-                        ${diff > 0 ? `<span class="score-pop animate-float-up">+${diff}</span>` : ''}
+                    <div class="lb-score-row" style="position:relative; display:flex; align-items:center;">
+                        ${isDisqualified ? `<span class="lb-score" style="color: #ef4444;">Disqualified</span>` : `<span class="lb-score">${player.score} pts</span>`}
+                        ${(!isDisqualified && diff > 0) ? `<span class="score-pop animate-float-up">+${diff}</span>` : ''}
                     </div>
                 </div>
             `;
@@ -917,12 +1018,13 @@
 
         const s = (id, name, score) => {
             document.getElementById('name'+id).innerText  = name  || '—';
-            document.getElementById('score'+id).innerText = score !== undefined ? score + ' pts' : '';
+            document.getElementById('score'+id).innerText = score !== undefined ? (score <= -99999 ? 'Disqualified' : score + ' pts') : '';
         };
         const getDisplayName = (p) => {
             if (!p) return '—';
             let name = p.username;
-            if (p.isAI) name = '🤖 ' + p.username;
+            if (p.isDisqualified) name = '🚫 ' + p.username;
+            else if (p.isAI) name = '🤖 ' + p.username;
             else if (p.userId === userId) name = p.username + ' (You)';
             return name;
         };
@@ -941,10 +1043,13 @@
             d.style.animationDelay = `${i * 0.1 + 0.7}s`;
             
             let name = p.username;
-            if (p.isAI) name = '🤖 ' + p.username;
+            if (p.isDisqualified) name = '🚫 <span style="color: #ef4444; text-decoration: line-through;">' + p.username + '</span>';
+            else if (p.isAI) name = '🤖 ' + p.username;
             else if (p.userId === userId) name = p.username + ' (You)';
 
-            d.innerHTML = `<span class="rest-rank">${i+4}</span><span class="rest-name">${name}</span><span class="rest-score">${p.score} pts</span>`;
+            const scoreDisplay = p.isDisqualified ? '<span style="color: #ef4444;">Disqualified</span>' : `${p.score} pts`;
+
+            d.innerHTML = `<span class="rest-rank">${p.isDisqualified ? '🚫' : i+4}</span><span class="rest-name">${name}</span><span class="rest-score">${scoreDisplay}</span>`;
             rest.appendChild(d);
         });
     }
